@@ -4,6 +4,8 @@ import Home from "./pages/Home.jsx";
 import Explore from "./pages/Explore.jsx";
 import SearchBox from "./components/SearchBox.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import ProfileReview from './pages/ProfileReview.jsx';
+
 
 const Detail = lazy(() => import("./pages/Detail.jsx"));
 
@@ -28,6 +30,7 @@ export default function App() {
               <Route path="/explore" element={<Explore />} />
               <Route path="/institution/:unitid" element={<Detail />} />
               <Route path="*" element={<div>Not found</div>} />
+              <Route path="/review" element={<ProfileReview />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
