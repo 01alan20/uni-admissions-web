@@ -1,35 +1,81 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+/** ---------- Non-linear search helpers (same as SearchBox) ---------- */
+function normalize(s = "") {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s&]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+const STOP = new Set(["the","of","and","for","at","in","on","to","a","an","&"]);
+function tokenize(s = "") {
+  const n = normalize(s);
+  const raw = n.split(" ").filter(Boolean);
+  const tokens = raw.filter(t => !STOP.has(t));
+  const acronym = raw.filter(w => w.length > 2).map(w => w[0]).join("");
+  if (acronym.length >= 2) tokens.push(acronym);
+  return Array.from(new Set(tokens));
+}
+function enrichRow(r) {
+  const nameState = `${r.name ?? ""} ${r.state ?? ""}`;
+  const tokens = tokenize(nameState);
+  const compact = normalize(nameState).replace(/\s+/g, "");
+  const words = normalize(r.name ?? "").split(" ").filter(Boolean);
+  const acronym = words.filter(w => w.length > 2).map(w => w[0]).join("");
+  return { ...r, _tokens: tokens, _compact: compact, _acronym: acronym };
+}
+function scoreRow(row, qTokens, qCompact) {
+  if (!row._tokens) return 0;
+  let hits = 0;
+  for (const qt of qTokens) {
+    if (row._tokens.some(rt => rt.startsWith(qt) || rt.includes(qt))) hits++;
+  }
+  if (hits === 0) return 0;
+  let score = hits;
+  if (row._compact.includes(qCompact)) score += 2;
+  if (hits === qTokens.length) score += 1;
+  if (row._acronym && qTokens.includes(row._acronym)) score += 1;
+  return score;
+}
+
 export default function Explore() {
   const [q, setQ] = useState("");
-  const [rows, setRows] = useState(null); // null until we actually fetch
+  const [rows, setRows] = useState(null); // null until first fetch
 
   useEffect(() => {
     if (q.trim().length >= 2 && rows === null) {
       fetch("/data/institutions.json")
         .then(r=>r.json())
-        .then(setRows)
+        .then(data => setRows(data.map(enrichRow)))
         .catch(()=>setRows([]));
     }
   }, [q, rows]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
-    const s = q.trim().toLowerCase();
+    const s = q.trim();
     if (!s) return [];
-    return rows
-      .filter(r =>
-        (r.name||"").toLowerCase().includes(s) ||
-        (r.state||"").toLowerCase().includes(s)
-      )
-      .slice(0, 50);
+    const qTokens = tokenize(s);
+    const qCompact = normalize(s).replace(/\s+/g, "");
+    const scored = [];
+
+    for (const r of rows) {
+      const sc = scoreRow(r, qTokens, qCompact);
+      if (sc > 0) scored.push([sc, r]);
+    }
+
+    scored.sort((a,b) => b[0]-a[0]);
+    return scored.slice(0, 50).map(x => x[1]);
   }, [rows, q]);
 
   return (
     <section>
       <h1 className="h1">Explore Institutions</h1>
-      <p className="sub">Start typing to find universities by name or state.</p>
+      <p className="sub">Search is order-independent. Try “southern california university” → “University of Southern California”.</p>
 
       <div className="search-wrap" style={{maxWidth:420, marginTop:12, marginBottom:18}}>
         <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -55,7 +101,7 @@ export default function Explore() {
             className="card"
             style={{textDecoration:"none", color:"inherit"}}
           >
-            <div className="card-row">
+            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", gap:16}}>
               <div>
                 <div style={{fontWeight:700, marginBottom:2}}>{row.name}</div>
                 <div className="sub" style={{fontSize:13}}>
