@@ -10,14 +10,17 @@ export default function SearchBox() {
   const boxRef = useRef(null);
 
   useEffect(() => {
-    fetch("/data/institutions_index.json").then(r=>r.json()).then(setList).catch(()=>setList([]));
+    fetch("/data/institutions_index.json")
+      .then(r => r.json())
+      .then(setList)
+      .catch(() => setList([]));
   }, []);
 
   const results = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return [];
     return list
-      .filter(r => (r.name||"").toLowerCase().includes(s) || (r.state||"").toLowerCase().includes(s))
+      .filter(r => (r.name || "").toLowerCase().includes(s) || (r.state || "").toLowerCase().includes(s))
       .slice(0, 10);
   }, [q, list]);
 
@@ -29,8 +32,8 @@ export default function SearchBox() {
 
   function onKey(e) {
     if (!results.length) return;
-    if (e.key === "ArrowDown") { e.preventDefault(); setHi(h => Math.min(h+1, results.length-1)); }
-    if (e.key === "ArrowUp")   { e.preventDefault(); setHi(h => Math.max(h-1, 0)); }
+    if (e.key === "ArrowDown") { e.preventDefault(); setHi(h => Math.min(h + 1, results.length - 1)); }
+    if (e.key === "ArrowUp")   { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
     if (e.key === "Enter")     { e.preventDefault(); choose(results[hi]); }
     if (e.key === "Escape")    { setOpen(false); }
   }
@@ -42,24 +45,31 @@ export default function SearchBox() {
   }, []);
 
   return (
-    <div ref={boxRef} style={{position:"relative", width:360}}>
+    <div ref={boxRef} className="search-wrap" role="search" aria-label="Search universities">
+      <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79L20 21.5L21.5 20L15.5 14zm-6 0A4.5 4.5 0 1 1 14 9.5A4.5 4.5 0 0 1 9.5 14z"/>
+      </svg>
       <input
         value={q}
         onFocus={()=>setOpen(true)}
         onChange={e=>{ setQ(e.target.value); setOpen(true); setHi(0); }}
         onKeyDown={onKey}
         placeholder="Search a university…"
-        style={{width:"100%", padding:"8px 10px", border:"1px solid #ddd", borderRadius:6}}
+        className="search"
       />
+
       {open && results.length>0 && (
-        <div style={{position:"absolute", top:"100%", left:0, right:0, background:"#fff", border:"1px solid #eee", borderRadius:6, marginTop:6, boxShadow:"0 4px 16px rgba(0,0,0,0.08)", zIndex:10}}>
+        <div className="suggest" role="listbox">
           {results.map((r,i)=>(
-            <div key={r.unitid}
-                 onMouseEnter={()=>setHi(i)}
-                 onMouseDown={(e)=>{e.preventDefault(); choose(r);}}
-                 style={{padding:"8px 10px", cursor:"pointer", background:i===hi?"#f5f7fb":"#fff"}}>
-              <div style={{fontWeight:600}}>{r.name}</div>
-              <div style={{fontSize:12, color:"#666"}}>{r.state}</div>
+            <div
+              key={r.unitid}
+              className={`row ${i===hi ? "active" : ""}`}
+              onMouseEnter={()=>setHi(i)}
+              onMouseDown={(e)=>{e.preventDefault(); choose(r);}}
+              role="option"
+            >
+              <div className="name">{r.name}</div>
+              <div className="meta">{r.state}</div>
             </div>
           ))}
         </div>
