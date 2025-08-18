@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+/** Tiny helper for the inline “what to include” tips */
 function nudge(label, text) {
   return (
     <details style={{ fontSize: 12, color: "#555", marginTop: 6 }}>
@@ -7,6 +8,11 @@ function nudge(label, text) {
       <div style={{ marginTop: 6, lineHeight: 1.3 }}>{text}</div>
     </details>
   );
+}
+
+/** Encode an object to x-www-form-urlencoded for Netlify Forms */
+function encodeForm(data) {
+  return new URLSearchParams(data).toString();
 }
 
 export default function ProfileReview() {
@@ -30,19 +36,22 @@ export default function ProfileReview() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
+  // Load institutions for the datalist suggestions
   useEffect(() => {
     (async () => {
       try {
-        // Use your existing institutions list
+        // Place institutions.json at: /public/data/institutions.json (Vite serves from project root)
         const r = await fetch("/data/institutions.json");
+        if (!r.ok) throw new Error("Failed to load institutions");
         const data = await r.json();
-        setInstitutions(data || []);
+        setInstitutions(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       }
     })();
   }, []);
 
+  // Build datalist options + a label->canonical name map
   const options = useMemo(() => {
     const out = [];
     const map = {};
@@ -65,38 +74,46 @@ export default function ProfileReview() {
     setError("");
     setDone(false);
 
-    if (!email.trim()) {
+    const trimmedEmail = (email || "").trim();
+    if (!trimmedEmail) {
       setError("Please enter your email so we can contact you.");
       return;
     }
 
+    // Normalize entered universities back to canonical names when possible
     const universities = [u1, u2, u3]
-      .map((v) => (labelToName[v] ? labelToName[v] : v))
+      .map((v) => (labelToName[v] ? labelToName[v] : (v || "").trim()))
       .filter(Boolean);
 
-    const payload = {
-      contact: { name: contactName.trim(), email: email.trim() },
-      universities,
-      academics: academics.trim(),
-      extracurricular: extracurricular.trim(),
-      athletics: athletics.trim(),
-      personal: personal.trim(),
-      // helpful context if you add review automation later
+    // Netlify Forms needs flat fields + a special "form-name"
+    const formData = {
+      "form-name": "profile-review", // MUST match the hidden form in index.html
+      name: (contactName || "").trim(),
+      email: trimmedEmail,
+      universities: universities.join("; "),
+      academics: (academics || "").trim(),
+      extracurricular: (extracurricular || "").trim(),
+      athletics: (athletics || "").trim(),
+      personal: (personal || "").trim(),
+      "bot-field": "", // honeypot, keep empty
       siteVersion: "v1",
     };
 
     setSubmitting(true);
     try {
-      const r = await fetch("/.netlify/functions/save-profile", {
+      const r = await fetch("/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: encodeForm(formData),
       });
-      if (!r.ok) throw new Error("Failed to submit");
-      const data = await r.json();
-      console.log("Saved:", data);
 
-      // clear & show success
+      if (!r.ok) {
+        // Surface a helpful message for debugging if needed
+        const txt = await r.text().catch(() => "");
+        throw new Error(txt || "Submit failed");
+      }
+
+      // Clear and show success
       setContactName("");
       setEmail("");
       setU1(""); setU2(""); setU3("");
@@ -128,6 +145,7 @@ export default function ProfileReview() {
               onChange={(e) => setContactName(e.target.value)}
               style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }}
               placeholder="Jane Doe"
+              autoComplete="name"
             />
           </label>
           <label>
@@ -139,6 +157,7 @@ export default function ProfileReview() {
               required
               style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }}
               placeholder="jane@email.com"
+              autoComplete="email"
             />
           </label>
         </div>
@@ -150,15 +169,30 @@ export default function ProfileReview() {
             Type to search—pick exact names if possible.
           </p>
 
-          <input list="uniList" value={u1} onChange={(e) => setU1(e.target.value)}
-            placeholder="University 1" style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8, marginBottom: 8 }} />
-          <input list="uniList" value={u2} onChange={(e) => setU2(e.target.value)}
-            placeholder="University 2" style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8, marginBottom: 8 }} />
-          <input list="uniList" value={u3} onChange={(e) => setU3(e.target.value)}
-            placeholder="University 3" style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }} />
+          <input
+            list="uniList"
+            value={u1}
+            onChange={(e) => setU1(e.target.value)}
+            placeholder="University 1"
+            style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8, marginBottom: 8 }}
+          />
+          <input
+            list="uniList"
+            value={u2}
+            onChange={(e) => setU2(e.target.value)}
+            placeholder="University 2"
+            style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8, marginBottom: 8 }}
+          />
+          <input
+            list="uniList"
+            value={u3}
+            onChange={(e) => setU3(e.target.value)}
+            placeholder="University 3"
+            style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }}
+          />
 
           <datalist id="uniList">
-            {options.slice(0, 8000).map(opt => (
+            {options.slice(0, 8000).map((opt) => (
               <option key={opt.label} value={opt.label} />
             ))}
           </datalist>
@@ -174,7 +208,8 @@ export default function ProfileReview() {
             placeholder="Grades (trend & rigor), test scores, notable coursework, research, awards, publications…"
             style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }}
           />
-          {nudge("Academics",
+          {nudge(
+            "Academics",
             "Aim for a clear snapshot: GPA + rigor (honors/AP/IB), score ranges (SAT/ACT) and notable ‘spike’ evidence (research, competitions, original work). World-class = creativity/originality + trusted validation (e.g., awards, faculty recs)."
           )}
         </div>
@@ -189,7 +224,8 @@ export default function ProfileReview() {
             placeholder="Leadership roles, impact, scale (school/regional/national), continuity, outcomes…"
             style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }}
           />
-          {nudge("Extracurricular",
+          {nudge(
+            "Extracurricular",
             "Highlight depth + impact. ‘1’ level often means national/international distinction or truly unusual accomplishment. ‘2’ = strong school/regional leadership. Emphasize results (users reached, funds raised, awards won)."
           )}
         </div>
@@ -204,7 +240,8 @@ export default function ProfileReview() {
             placeholder="Sport(s), level (varsity, club, national), rankings, recruit status, coach outreach…"
             style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }}
           />
-          {nudge("Athletics",
+          {nudge(
+            "Athletics",
             "Recruit-level prospects (coach-supported) are a ‘1’. Otherwise, note team role, achievements, and time commitment. It’s okay if athletics isn’t your spike."
           )}
         </div>
@@ -219,7 +256,8 @@ export default function ProfileReview() {
             placeholder="Character, grit, leadership, kindness; adversities overcome; community impact; what makes you memorable…"
             style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 8 }}
           />
-          {nudge("Personal",
+          {nudge(
+            "Personal",
             "This summarizes qualities across essays, recommendations, interview, and life context (humor, sensitivity, courage, integrity, kindness). Show concrete stories—avoid generic claims."
           )}
         </div>
@@ -229,7 +267,13 @@ export default function ProfileReview() {
           <button
             type="submit"
             disabled={submitting}
-            style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid #222", background: "#222", color: "#fff" }}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              border: "1px solid #222",
+              background: "#222",
+              color: "#fff",
+            }}
           >
             {submitting ? "Submitting…" : "Submit for Review"}
           </button>

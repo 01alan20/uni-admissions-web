@@ -1,4 +1,3 @@
-// netlify/functions/save-profile.js
 import { getStore } from '@netlify/blobs';
 
 export async function handler(event) {
@@ -14,22 +13,29 @@ export async function handler(event) {
   }
 
   const email = data?.contact?.email?.trim();
-  if (!email) {
-    return { statusCode: 400, body: 'Email is required.' };
-  }
+  if (!email) return { statusCode: 400, body: 'Email is required.' };
 
   try {
     const receivedAt = new Date().toISOString();
-    const userAgent = event.headers['user-agent'] || '';
-    const ip = event.headers['x-nf-client-connection-ip'] || '';
     const safeEmail = email.replace(/[^a-z0-9._-]/gi, '_').toLowerCase();
     const key = `${receivedAt}_${safeEmail}`;
 
-    const record = { ...data, _meta: { receivedAt, userAgent, ip } };
+    const record = {
+      ...data,
+      _meta: {
+        receivedAt,
+        userAgent: event.headers['user-agent'] || '',
+        ip: event.headers['x-nf-client-connection-ip'] || '',
+      },
+    };
 
-    // Store name can be 'profiles' or anything; keep it consistent
     const store = getStore('profiles');
-    await store.setJSON(key, record, { metadata: { email } });
+
+    // Use set() for maximum compatibility across Blobs versions
+    await store.set(key, JSON.stringify(record), {
+      contentType: 'application/json'
+      // (intentionally omitting metadata to avoid version-specific issues)
+    });
 
     return {
       statusCode: 200,
