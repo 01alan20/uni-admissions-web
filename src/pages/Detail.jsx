@@ -113,14 +113,12 @@ export default function Detail() {
 
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
             <div><strong>Total enrollment:</strong> {Number.isFinite(+totalEnroll) ? Number(totalEnroll).toLocaleString() : "–"}</div>
-            <div><strong>Acceptance:</strong> {Number.isFinite(+acceptance) ? `${acceptance}%` : "–"}</div>
-            <div><strong>Yield:</strong> {Number.isFinite(+yieldPct) ? `${yieldPct}%` : "–"}</div>
             <div><strong>6-yr grad:</strong> {Number.isFinite(+m.grad_rate_6yr) ? `${m.grad_rate_6yr}%` : "–"}</div>
           </div>
 
           {/* Admissions Funnel */}
           <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 16, margin: "18px 0" }}>
-            <h3 style={{ marginTop: 0 }}>Admissions Funnel (latest year)</h3>
+            <h3 style={{ marginTop: 0 }}>Admissions Funnel</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(220px, 1fr))", gap: 16 }}>
               <div>
                 <div style={{ fontWeight: 600 }}>Applicants</div>
