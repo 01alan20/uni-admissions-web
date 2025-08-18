@@ -1,39 +1,43 @@
 // netlify/functions/save-profile.js
-import { getStore } from "@netlify/blobs";
+import { getStore } from '@netlify/blobs';
 
-export default async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+export async function handler(event) {
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  let payload;
+  let data;
   try {
-    payload = await req.json();
+    data = JSON.parse(event.body || '{}');
   } catch {
-    return new Response("Invalid JSON body", { status: 400 });
+    return { statusCode: 400, body: 'Invalid JSON body' };
   }
 
-  const email = payload?.contact?.email?.trim();
-  if (!email) return new Response("Email is required.", { status: 400 });
+  const email = data?.contact?.email?.trim();
+  if (!email) {
+    return { statusCode: 400, body: 'Email is required.' };
+  }
 
   try {
     const receivedAt = new Date().toISOString();
-    const store = getStore("profile-reviews"); // store name as a STRING
-    const safeEmail = email.replace(/[^a-z0-9._-]/gi, "_").toLowerCase();
+    const userAgent = event.headers['user-agent'] || '';
+    const ip = event.headers['x-nf-client-connection-ip'] || '';
+    const safeEmail = email.replace(/[^a-z0-9._-]/gi, '_').toLowerCase();
     const key = `${receivedAt}_${safeEmail}`;
 
-    await store.setJSON(key, {
-      ...payload,
-      _meta: {
-        receivedAt,
-        userAgent: req.headers.get("user-agent") || null,
-        ip: req.headers.get("x-nf-client-connection-ip") || null,
-      },
-    }, { metadata: { email } });
+    const record = { ...data, _meta: { receivedAt, userAgent, ip } };
 
-    return Response.json({ ok: true, id: key });
-  } catch (err) {
-    console.error("save-profile error:", err);
-    return new Response("Internal Server Error", { status: 500 });
+    // Store name can be 'profiles' or anything; keep it consistent
+    const store = getStore('profiles');
+    await store.setJSON(key, record, { metadata: { email } });
+
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ok: true, id: key }),
+    };
+  } catch (e) {
+    console.error('save-profile error:', e);
+    return { statusCode: 500, body: 'Internal Server Error' };
   }
-};
+}
