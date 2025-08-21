@@ -4,8 +4,8 @@ import Home from "./pages/Home.jsx";
 import Explore from "./pages/Explore.jsx";
 import SearchBox from "./components/SearchBox.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
-import ProfileReview from "./pages/ProfileReview.jsx";
-import "./styles/modern.css"; // load AFTER any global/index.css
+// import ProfileReview from "./pages/ProfileReview.jsx"; // kept for later
+import "./styles/modern.css";
 
 const Detail = lazy(() => import("./pages/Detail.jsx"));
 
@@ -22,7 +22,7 @@ export default function App() {
           <nav className="navlinks">
             <NavLink to="/" end className={({isActive}) => isActive ? "active" : ""}>Home</NavLink>
             <NavLink to="/explore" className={({isActive}) => isActive ? "active" : ""}>Explore</NavLink>
-            <NavLink to="/review" className={({isActive}) => isActive ? "active" : ""}>Profile Review</NavLink>
+            {/* <NavLink to="/review" className={({isActive}) => isActive ? "active" : ""}>Profile Review</NavLink> */}
           </nav>
 
           <div className="nav-spacer" />
@@ -39,7 +39,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/institution/:unitid" element={<Detail />} />
-              <Route path="/review" element={<ProfileReview />} />
+              {/* <Route path="/review" element={<ProfileReview />} /> */}
               <Route path="*" element={<div>Not found</div>} />
             </Routes>
           </Suspense>
