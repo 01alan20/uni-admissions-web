@@ -75,7 +75,6 @@ export default function Explore() {
   return (
     <section>
       <h1 className="h1">Explore Institutions</h1>
-      <p className="sub">Search is order-independent. Try “southern california university” → “University of Southern California”.</p>
 
       <div className="search-wrap" style={{maxWidth:420, marginTop:12, marginBottom:18}}>
         <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
