@@ -2,6 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
 :root{
+  --container-max:1280px;
   --bg:#fafafc;
   --surface:#ffffff;
   --text:#0f172a;
@@ -28,8 +29,19 @@ body{
 ::selection{background:rgba(79,70,229,.15)}
 a{color:inherit;text-decoration:none}
 
-.container{width:min(1120px, 92%); margin-inline:auto;}
-.main-pad{padding:28px 0 56px}
+.container{width:min(var(--container-max), 92%); margin-inline:auto;}
+.main-pad{padding:36px 0 60px}
+
+.page-intro{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  max-width:min(960px, 100%);
+}
+.page-intro .sub{
+  font-size:18px;
+  line-height:1.6;
+}
 
 /* ---------- Header ---------- */
 .site-header{
@@ -49,7 +61,7 @@ a{color:inherit;text-decoration:none}
 .navlinks a{padding:8px 10px; border-radius:10px; color:var(--muted)}
 .navlinks a.active, .navlinks a:hover{color:var(--text); background:#f5f6fb}
 .nav-spacer{flex:1}
-.nav-search{width:clamp(220px, 34vw, 420px)}
+.nav-search{width:clamp(260px, 32vw, 520px)}
 
 /* ---------- Pill search + dropdown ---------- */
 .search-wrap{position:relative; width:100%}

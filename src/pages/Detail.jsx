@@ -26,6 +26,11 @@ function Bar({ pct, label }) {
   );
 }
 
+function formatCurrency(value) {
+  if (!Number.isFinite(+value)) return "—";
+  return `$${Number(value).toLocaleString()}`;
+}
+
 export default function Detail() {
   const { unitid } = useParams();
   const [institutions, setInstitutions] = useState(null);
@@ -69,6 +74,8 @@ export default function Detail() {
   const admittedEst  = m.admitted_est;
   const enrolledEst  = m.enrolled_est;
   const totalEnroll  = m.total_enrollment ?? inst.total_enrollment;
+  const tuitionIn    = inst.tuition_2023_24_in_state ?? inst.tuition_2023_24 ?? m.tuition_2023_24;
+  const tuitionOut   = inst.tuition_2023_24_out_of_state;
 
   // SAT percentiles
   const satEBRW = [
@@ -82,7 +89,7 @@ export default function Detail() {
     m.sat_math_75th_percentile_score
   ];
 
-  // ACT percentiles (IPEDS uses 1–36 scale)
+  // ACT percentiles (scores range 1–36)
   const actComposite = [
     m.act_composite_25th_percentile_score,
     m.act_composite_50th_percentile_score,
@@ -112,8 +119,9 @@ export default function Detail() {
           </div>
 
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
-            <div><strong>Total enrollment:</strong> {Number.isFinite(+totalEnroll) ? Number(totalEnroll).toLocaleString() : "–"}</div>
-            <div><strong>6-yr grad:</strong> {Number.isFinite(+m.grad_rate_6yr) ? `${m.grad_rate_6yr}%` : "–"}</div>
+            <div><strong>Total enrollment:</strong> {Number.isFinite(+totalEnroll) ? Number(totalEnroll).toLocaleString() : "—"}</div>
+            <div><strong>6-yr grad:</strong> {Number.isFinite(+m.grad_rate_6yr) ? `${m.grad_rate_6yr}%` : "—"}</div>
+            <div><strong>2023-24 tuition:</strong> {formatCurrency(inst.tuition_2023_24 ?? tuitionIn)}</div>
           </div>
 
           {/* Admissions Funnel */}
@@ -140,6 +148,15 @@ export default function Detail() {
                   {Number.isFinite(+enrolledEst) ? `${Number(enrolledEst).toLocaleString()} (est.)` : ""}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Cost Snapshot */}
+          <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 16, margin: "18px 0" }}>
+            <h3 style={{ marginTop: 0 }}>Cost Snapshot (2023-24)</h3>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div>In-state tuition &amp; fees: {formatCurrency(tuitionIn)}</div>
+              <div>Out-of-state tuition &amp; fees: {formatCurrency(tuitionOut)}</div>
             </div>
           </div>
 

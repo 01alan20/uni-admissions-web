@@ -1,5 +1,6 @@
 import argparse, re, math
 from pathlib import Path
+from typing import Optional
 import pandas as pd
 
 # ---------- small helpers ----------
@@ -122,7 +123,7 @@ def load_aeg(p: Path, year: int):
     })
     return out
 
-def load_tuition(p: Path):
+def load_tuition(p: Path, merged_path: Optional[Path] = None):
     df = prefer_base_cols(read_csv_safe(p))
     # rename DRVIC columns -> 2020_21 etc.
     ren = {c: c.replace("drvic2023_tuition_and_fees_", "").replace("-", "_") for c in df.columns if c.startswith("drvic2023_tuition_and_fees_")}
@@ -130,6 +131,21 @@ def load_tuition(p: Path):
     keep_years = [c for c in df.columns if c in ("2020_21","2021_22","2022_23","2023_24")]
     long = df[["unitid"] + keep_years].melt(id_vars=["unitid"], var_name="tuition_year", value_name="tuition_and_fees")
     long["tuition_and_fees"] = pd.to_numeric(long["tuition_and_fees"], errors="coerce")
+
+    if merged_path and merged_path.exists():
+        merged_df = prefer_base_cols(read_csv_safe(merged_path))
+        cols = [c for c in ("tuitionfee_in", "tuitionfee_out") if c in merged_df.columns]
+        if cols:
+            extra = merged_df[["unitid"] + cols].copy()
+            for c in cols:
+                extra[c] = pd.to_numeric(extra[c], errors="coerce")
+            extra["tuition_year"] = "2023_24"
+            extra = extra.rename(columns={
+                "tuitionfee_in": "tuition_in_state",
+                "tuitionfee_out": "tuition_out_of_state"
+            })
+            long = long.merge(extra, on=["unitid", "tuition_year"], how="left")
+
     return long
 
 def derive_requirements_2023(df23: pd.DataFrame):
@@ -170,7 +186,17 @@ def derive_requirements_2023(df23: pd.DataFrame):
 
 # ---------- builders ----------
 def build_institutions(base: pd.DataFrame, a23: pd.DataFrame, tuition_long: pd.DataFrame):
-    t_2324 = tuition_long[tuition_long["tuition_year"]=="2023_24"][["unitid","tuition_and_fees"]].rename(columns={"tuition_and_fees":"tuition_2023_24"})
+    base_cols = ["unitid","tuition_and_fees"]
+    if "tuition_in_state" in tuition_long.columns:
+        base_cols.append("tuition_in_state")
+    if "tuition_out_of_state" in tuition_long.columns:
+        base_cols.append("tuition_out_of_state")
+
+    t_2324 = tuition_long[tuition_long["tuition_year"]=="2023_24"][base_cols].rename(columns={
+        "tuition_and_fees":"tuition_2023_24",
+        "tuition_in_state":"tuition_2023_24_in_state",
+        "tuition_out_of_state":"tuition_2023_24_out_of_state"
+    })
     merged = (base
         .merge(a23[["unitid","acceptance_rate","yield","grad_rate_6yr","total_enrollment"]], on="unitid", how="left")
         .merge(t_2324, on="unitid", how="left"))
@@ -179,7 +205,12 @@ def build_institutions(base: pd.DataFrame, a23: pd.DataFrame, tuition_long: pd.D
     for c in ["acceptance_rate","yield","grad_rate_6yr"]:
         merged[c] = merged[c].apply(iround)
 
-    out = merged[["unitid","name","city","state","control","level","acceptance_rate","yield","tuition_2023_24","grad_rate_6yr","total_enrollment","website","admissions_url"]]
+    cols_out = [
+        "unitid","name","city","state","control","level",
+        "acceptance_rate","yield","tuition_2023_24","tuition_2023_24_in_state","tuition_2023_24_out_of_state",
+        "grad_rate_6yr","total_enrollment","website","admissions_url"
+    ]
+    out = merged[[c for c in cols_out if c in merged.columns]]
     return out[out["name"].notna()]
 
 def build_institutions_index(base: pd.DataFrame):
@@ -233,7 +264,7 @@ def main():
     base = load_uni_info(src / "2023_uni_information.csv")
     a22  = load_aeg(src / "2022_Admissions_Enrollment_Graduation.csv", 2022)
     a23  = load_aeg(src / "2023_Admissions_Enrollment_Graduation.csv", 2023)
-    tuition_long = load_tuition(src / "2023_tuition.csv")
+    tuition_long = load_tuition(src / "2023_tuition.csv", src / "MERGED2022_23_PP.csv")
 
     institutions       = build_institutions(base, a23, tuition_long)
     institutions_index = build_institutions_index(base)

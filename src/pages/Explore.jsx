@@ -74,9 +74,53 @@ export default function Explore() {
 
   return (
     <section>
-      <h1 className="h1">Explore Institutions</h1>
+      <div className="page-intro">
+        <h1 className="h1">Explore Institutions</h1>
+        <p className="sub">
+          Browse the full undergraduate universe, filter by name, and scan headline metrics that matter for funnel health.
+          Use this space to build shortlists for deeper Profile Review work or to benchmark comparable institutions quickly.
+        </p>
+      </div>
 
-      <div className="search-wrap" style={{maxWidth:420, marginTop:12, marginBottom:18}}>
+      <div
+        className="section"
+        style={{
+          display: "grid",
+          gap: "20px",
+          marginTop: 24,
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        }}
+      >
+        <article className="card">
+          <h3 style={{ marginTop: 0 }}>14k+ Campuses</h3>
+          <p>
+            Includes public, private, and for-profit institutions with the latest national reporting cycle.
+          </p>
+        </article>
+
+        <article className="card">
+          <h3 style={{ marginTop: 0 }}>Key Ratios in Context</h3>
+          <p>
+            Acceptance, yield, and graduation snapshots help determine where the enrollment funnel is thriving or lagging.
+          </p>
+        </article>
+
+        <article className="card">
+          <h3 style={{ marginTop: 0 }}>Ready for Deep Dives</h3>
+          <p>
+            Click any institution card to open the detailed profile with trend charts, testing insights, and tuition comparisons.
+          </p>
+        </article>
+      </div>
+
+      <div
+        className="search-wrap"
+        style={{
+          maxWidth: "min(1040px, 100%)",
+          marginTop: 24,
+          marginBottom: 26,
+        }}
+      >
         <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           <path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79L20 21.5L21.5 20L15.5 14zm-6 0A4.5 4.5 0 1 1 14 9.5A4.5 4.5 0 0 1 9.5 14z"/>
         </svg>
@@ -88,9 +132,6 @@ export default function Explore() {
         />
       </div>
 
-      {!rows && q.trim().length < 2 && (
-        <p className="sub">Tip: you can also use the search box in the header.</p>
-      )}
 
       <div className="grid">
         {filtered.map(row => (
@@ -111,14 +152,33 @@ export default function Explore() {
             </div>
 
             <div style={{marginTop:10, display:"flex", gap:14, flexWrap:"wrap", fontSize:14}}>
-              <span>Acceptance: {row.acceptance_rate ?? "–"}%</span>
-              <span>Yield: {row.yield ?? "–"}%</span>
-              <span>Tuition: {row.tuition_2023_24 ? `$${row.tuition_2023_24.toLocaleString()}` : "–"}</span>
-              <span>6-yr Grad: {row.grad_rate_6yr ?? "–"}%</span>
+              <span>Acceptance: {row.acceptance_rate ?? "—"}%</span>
+              <span>Yield: {row.yield ?? "—"}%</span>
+              <span>
+                Tuition (in/out):{" "}
+                {formatTuitionPair(
+                  row.tuition_2023_24_in_state,
+                  row.tuition_2023_24_out_of_state,
+                  row.tuition_2023_24
+                )}
+              </span>
+              <span>6-yr Grad: {row.grad_rate_6yr ?? "—"}%</span>
             </div>
           </Link>
         ))}
       </div>
     </section>
   );
+}
+
+function formatTuitionPair(inState, outState, fallback) {
+  const format = v => `$${Number(v).toLocaleString()}`;
+  const hasIn = Number.isFinite(+inState);
+  const hasOut = Number.isFinite(+outState);
+
+  if (hasIn && hasOut) return `${format(inState)} / ${format(outState)}`;
+  if (hasIn) return `${format(inState)} (in-state)`;
+  if (hasOut) return `${format(outState)} (out-of-state)`;
+  if (Number.isFinite(+fallback)) return format(fallback);
+  return "—";
 }
